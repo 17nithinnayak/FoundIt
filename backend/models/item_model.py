@@ -10,3 +10,6 @@ class Item(BaseModel):
     status: str  
     user_id: str  
     image_url: Optional[str] = None
+    claimed_by: Optional[str] = None
+    claimed_at: Optional[datetime] = None
+    is_claimed: bool = False

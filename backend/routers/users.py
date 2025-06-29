@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, EmailStr
 from backend.database import db
+from backend.auth.auth_bcrypt import hash_password, verify_password
 
 router = APIRouter()
 
@@ -11,6 +12,9 @@ class User(BaseModel):
 
 @router.post("/")
 async def create_user(user: User):
+    hashed_pw = hash_password(user.password)
+    user_dict = user.dict()
+    user_dict["password"] = hashed_pw
     users_collection = db["users"]
 
     if users_collection.find_one({"email": user.email}):
