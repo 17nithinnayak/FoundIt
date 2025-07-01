@@ -3,8 +3,10 @@ from backend.database import db
 from backend.routers import users
 from backend.routers import items, auth, admin
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.include_router(users.router, prefix="/users", tags=["Users"])
 app.include_router(items.router, prefix="/items", tags=["Items"])
@@ -13,11 +15,12 @@ app.include_router(admin.router, prefix="/admin", tags=["Admin"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Or restrict to ["http://127.0.0.1:5500"] if needed
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # This allows OPTIONS, POST, GET, etc.
+    allow_methods=["*"], 
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 def root():

@@ -4,13 +4,14 @@ from fastapi import Path, Query, Depends
 from fastapi.security import OAuth2PasswordBearer
 from backend.database import db
 from backend.models.item_model import Item
+from backend.auth.utils import decode_access_token
+
 import os
 from fastapi.responses import JSONResponse
 from backend.database import item_collection
 import shutil
 from typing import List, Optional
 from datetime import datetime
-
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
@@ -27,12 +28,10 @@ async def upload_item(
     image: UploadFile = File(...)
 ):
     try:
-        # Save image
         file_location = f"{UPLOAD_DIR}{image.filename}"
         with open(file_location, "wb") as f:
             shutil.copyfileobj(image.file, f)
 
-        # Insert item data into DB
         item = {
             "title": title,
             "description": description,
@@ -42,39 +41,11 @@ async def upload_item(
             "date_reported": datetime.now()
         }
         result = await item_collection.insert_one(item)
-
         return {"message": "Item uploaded", "id": str(result.inserted_id)}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{item_id}", response_model=Item)
-async def get_item(item_id: str = Path(...)):
-    item = await db["items"].find_one({"_id": ObjectId(item_id)})
-    if item:
-        item["id"] = str(item["_id"])
-        return Item(**item)
-    raise HTTPException(status_code=404, detail="Item not found")
-
-@router.delete("/{item_id}")
-async def delete_item(item_id: str):
-    result = await db["items"].delete_one({"_id": ObjectId(item_id)})
-    if result.deleted_count==1:
-        return{"message": "Item deleted successfully"}
-    raise HTTPException(status_code=404, detail="Item not found")
-
-@router.put("/{item_id}", response_model=Item)
-async def update_item(item_id: str, updated_data: Item):
-    result = await db["items"].update_one(
-        {"_id": ObjectId(item_id)},
-        {"$set": updated_data.dict()}
-    )
-    if result.modified_count == 1:
-        updated = await db["items"].find_one({"_id": ObjectId(item_id)})
-        updated["id"] = str(updated["_id"])
-        return Item(**updated)
-    raise HTTPException(status_code=404, detail="Item not found or no changes made")
-
+# 🟢 FIRST define this route
 @router.get("/items")
 async def get_items(
     status: Optional[str] = Query(None, description="Filter by item status"),
@@ -99,6 +70,33 @@ async def get_items(
 
     return {"results": items}
 
+# 🔴 THEN define this route
+@router.get("/{item_id}", response_model=Item)
+async def get_item(item_id: str = Path(...)):
+    item = await db["items"].find_one({"_id": ObjectId(item_id)})
+    if item:
+        item["id"] = str(item["_id"])
+        return Item(**item)
+    raise HTTPException(status_code=404, detail="Item not found")
+
+@router.delete("/{item_id}")
+async def delete_item(item_id: str):
+    result = await db["items"].delete_one({"_id": ObjectId(item_id)})
+    if result.deleted_count == 1:
+        return {"message": "Item deleted successfully"}
+    raise HTTPException(status_code=404, detail="Item not found")
+
+@router.put("/{item_id}", response_model=Item)
+async def update_item(item_id: str, updated_data: Item):
+    result = await db["items"].update_one(
+        {"_id": ObjectId(item_id)},
+        {"$set": updated_data.dict()}
+    )
+    if result.modified_count == 1:
+        updated = await db["items"].find_one({"_id": ObjectId(item_id)})
+        updated["id"] = str(updated["_id"])
+        return Item(**updated)
+    raise HTTPException(status_code=404, detail="Item not found or no changes made")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     payload = decode_access_token(token)
