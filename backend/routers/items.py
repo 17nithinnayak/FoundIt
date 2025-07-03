@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from backend.database import db
 from backend.models.item_model import Item
 from backend.auth.utils import decode_access_token
-
+from backend.auth.auth_handler import get_current_user
 import os
 from fastapi.responses import JSONResponse
 from backend.database import item_collection
@@ -19,7 +19,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 UPLOAD_DIR = "uploads/"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-@router.post("/items/upload")
+@router.post("/upload")
 async def upload_item(
     title: str = Form(...),
     description: str = Form(None),
@@ -119,7 +119,7 @@ async def claim_item(item_id: str, current_user=Depends(get_current_user)):
         {
             "$set": {
                 "is_claimed": True,
-                "claimed_by": current_user["user_id"],
+                
                 "claimed_at": datetime.utcnow()
             }
         }

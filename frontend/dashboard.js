@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("items-container");
     const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role"); // <-- GET USER ROLE
 
     if (!token) {
         alert("Please login first.");
@@ -100,12 +101,22 @@ document.addEventListener("DOMContentLoaded", () => {
                     <p><strong>Claimed:</strong> ${item.is_claimed ? "Yes" : "No"}</p>
                 `;
 
-                if (!item.is_claimed) {
-                    const btn = document.createElement("button");
-                    btn.textContent = "Claim";
-                    btn.className = "btn btn-primary";
-                    btn.onclick = () => claimItem(item.id, token);
-                    body.appendChild(btn);
+                // Claim Button
+                if (!item.is_claimed && role !== "admin") {
+                    const claimBtn = document.createElement("button");
+                    claimBtn.textContent = "Claim";
+                    claimBtn.className = "btn btn-primary";
+                    claimBtn.onclick = () => claimItem(item.id, token);
+                    body.appendChild(claimBtn);
+                }
+
+                // Delete Button for Admin
+                if (role === "admin") {
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.textContent = "Delete";
+                    deleteBtn.className = "btn btn-danger ms-2";
+                    deleteBtn.onclick = () => deleteItem(item.id, token);
+                    body.appendChild(deleteBtn);
                 }
 
                 card.appendChild(body);
@@ -137,6 +148,31 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (err) {
             console.error("Claim error:", err);
             alert("Error while claiming item.");
+        }
+    }
+
+    // Delete item
+    async function deleteItem(itemId, token) {
+        if (!confirm("Are you sure you want to delete this item?")) return;
+
+        try {
+            const res = await fetch(`http://127.0.0.1:8000/items/${itemId}`, {
+                method: "DELETE",
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+                alert("Item deleted successfully!");
+                location.reload();
+            } else {
+                alert(result.detail || "Failed to delete item");
+            }
+        } catch (err) {
+            console.error("Delete error:", err);
+            alert("Error deleting item.");
         }
     }
 

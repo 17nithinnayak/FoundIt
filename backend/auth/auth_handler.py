@@ -6,6 +6,7 @@ from fastapi.security import OAuth2PasswordBearer
 from backend.database import user_collection
 from bson.objectid import ObjectId
 from fastapi import Depends, HTTPException, status
+from backend.auth.utils import decode_access_token 
 
 load_dotenv()
 
@@ -29,17 +30,8 @@ def verify_token(token: str):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id = payload.get("user_id")
-        if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
-    except JWTError:
+    payload = decode_access_token(token)
+    if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-    user = await user_collection.find_one({"_id": ObjectId(user_id)})
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    return user
+    return payload
   

@@ -6,7 +6,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     phone: str
     password: str
-    role: Optional[str] = "student"
+    role: str = "student"
 
 class UserInDB(UserCreate):
     id: Optional[str]

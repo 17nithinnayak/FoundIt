@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Security
 from bson.objectid import ObjectId
 from backend.auth.auth_handler import get_current_user
 from backend.database import claim_collection, user_collection, item_collection
 
 router = APIRouter()
 
-@router.get("/claims")
+def admin_only(current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access only")
+    return current_user
+
+@router.get("/claims", dependencies=[Depends(admin_only)])
 async def get_all_claims(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
@@ -33,7 +38,7 @@ async def get_all_claims(current_user: dict = Depends(get_current_user)):
 
     return {"claims": claims}
 
-@router.put("/claims/{claim_id}")
+@router.put("/claims/{claim_id}", dependencies=[Depends(admin_only)])
 async def update_claim_status(
     claim_id: str,
     status: str = Query(..., enum=["approved", "rejected"]),
@@ -52,3 +57,16 @@ async def update_claim_status(
     )
     
     return {"msg": f"Claim {status} successfully"}
+
+@router.get("/admin/items", dependencies=[Depends(admin_only)])
+async def view_all_items(current_user=Depends(get_current_user)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admins only")
+    
+    items = []
+    async for item in item_collection.find():
+        item["id"] = str(item["_id"])
+        del item["_id"]
+        items.append(item)
+    
+    return {"results": items}
