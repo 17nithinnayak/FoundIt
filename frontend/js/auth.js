@@ -6,6 +6,7 @@ if (loginForm) {
 
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    const isAdmin = document.getElementById("adminCheck").checked;
 
     const formData = new URLSearchParams();
     formData.append("username", email);
@@ -24,8 +25,11 @@ if (loginForm) {
 
       if (res.ok) {
         localStorage.setItem("token", data.access_token);
+        localStorage.setItem("role", isAdmin ? "admin" : "user");  // store role manually from checkbox
         alert("Login successful!");
-        window.location.href = "dashboard.html";
+
+        // Redirect based on checkbox
+        window.location.href = isAdmin ? "admin_dashboard.html" : "dashboard.html";
       } else {
         alert("Login failed: " + (data.detail || "Unknown error"));
       }
