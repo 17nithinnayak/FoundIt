@@ -6,21 +6,23 @@ from backend.database import claim_collection, user_collection, item_collection
 router = APIRouter()
 
 def admin_only(current_user=Depends(get_current_user)):
-    if current_user["role"] != "admin":
+    role = current_user.get("role")
+    if role != "admin":
         raise HTTPException(status_code=403, detail="Admin access only")
     return current_user
+
 
 @router.get("/claims", dependencies=[Depends(admin_only)])
 async def get_all_claims(current_user: dict = Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
     
-    claims = []
+    claim = []
     async for claim in claim_collection.find():
         user = await user_collection.find_one({"_id": ObjectId(claim["user_id"])})
         item = await item_collection.find_one({"_id": ObjectId(claim["item_id"])})
 
-        claims.append({
+        claim.append({
             "claim_id": str(claim["_id"]),
             "status": claim.get("status", "Pending"),
             "timestamp": claim.get("timestamp"),
@@ -36,12 +38,12 @@ async def get_all_claims(current_user: dict = Depends(get_current_user)):
             }
         })
 
-    return {"claims": claims}
+    return {"claims": claim}
 
 @router.put("/claims/{claim_id}", dependencies=[Depends(admin_only)])
 async def update_claim_status(
     claim_id: str,
-    status: str = Query(..., enum=["approved", "rejected"]),
+    status: str = Query(..., enum=["approved", "rejected", "pending"]),
     current_user: dict = Depends(get_current_user)
 ):
     if current_user["role"] != "admin":
@@ -58,15 +60,24 @@ async def update_claim_status(
     
     return {"msg": f"Claim {status} successfully"}
 
-@router.get("/admin/items", dependencies=[Depends(admin_only)])
+@router.get("/items", dependencies=[Depends(admin_only)])
 async def view_all_items(current_user=Depends(get_current_user)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admins only")
-    
+
     items = []
     async for item in item_collection.find():
-        item["id"] = str(item["_id"])
+        item_id_str = str(item["_id"])
+
+        # Fetch claim if exists
+        claim = await claim_collection.find_one({"item_id": item_id_str})
+        
+        item["id"] = item_id_str
+        item["claimed"] = bool(claim)
+        item["claim_status"] = claim.get("status") if claim else None
+        item["claim_id"] = str(claim["_id"]) if claim else None
         del item["_id"]
         items.append(item)
-    
+
     return {"results": items}
+

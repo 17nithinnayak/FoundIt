@@ -125,4 +125,12 @@ async def claim_item(item_id: str, current_user=Depends(get_current_user)):
         }
     )
 
+    await claim_collection.insert_one({
+    "user_id": current_user["id"],
+    "item_id": item_id,
+    "status": "pending",
+    "timestamp": datetime.utcnow()
+    })
+
+
     return {"msg": "Item claimed successfully"}

@@ -30,8 +30,19 @@ def verify_token(token: str):
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = decode_access_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload
-  
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise credentials_exception
+
+    user = await user_collection.find_one({"_id": ObjectId(user_id)})
+    if user is None:
+        raise credentials_exception
+
+    # Make sure this includes "role"
+    return {
+        "id": str(user["_id"]),
+        "name": user["name"],
+        "email": user["email"],
+        "role": user["role"]  # <- THIS LINE IS CRITICAL
+    }

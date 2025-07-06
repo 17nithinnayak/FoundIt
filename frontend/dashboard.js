@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("items-container");
     const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role"); // <-- GET USER ROLE
+    const role = localStorage.getItem("role");
 
     if (!token) {
         alert("Please login first.");
@@ -101,21 +101,21 @@ document.addEventListener("DOMContentLoaded", () => {
                     <p><strong>Claimed:</strong> ${item.is_claimed ? "Yes" : "No"}</p>
                 `;
 
-                // Claim Button
+                // Claim Button for non-admins
                 if (!item.is_claimed && role !== "admin") {
                     const claimBtn = document.createElement("button");
                     claimBtn.textContent = "Claim";
                     claimBtn.className = "btn btn-primary";
-                    claimBtn.onclick = () => claimItem(item.id, token);
+                    claimBtn.onclick = () => claimItem(item.id);
                     body.appendChild(claimBtn);
                 }
 
-                // Delete Button for Admin
+                // Delete Button for admin only
                 if (role === "admin") {
                     const deleteBtn = document.createElement("button");
                     deleteBtn.textContent = "Delete";
                     deleteBtn.className = "btn btn-danger ms-2";
-                    deleteBtn.onclick = () => deleteItem(item.id, token);
+                    deleteBtn.onclick = () => deleteItem(item.id);
                     body.appendChild(deleteBtn);
                 }
 
@@ -129,7 +129,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Claim item
-    async function claimItem(itemId, token) {
+    async function claimItem(itemId) {
         try {
             const res = await fetch(`http://127.0.0.1:8000/items/claim/${itemId}`, {
                 method: "POST",
@@ -141,7 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const result = await res.json();
             if (res.ok) {
                 alert("Item claimed successfully!");
-                location.reload();
+                loadItems();
             } else {
                 alert(result.detail || "Failed to claim item");
             }
@@ -151,32 +151,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Delete item
-    async function deleteItem(itemId, token) {
-        if (!confirm("Are you sure you want to delete this item?")) return;
+ 
 
-        try {
-            const res = await fetch(`http://127.0.0.1:8000/items/${itemId}`, {
-                method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            const result = await res.json();
-            if (res.ok) {
-                alert("Item deleted successfully!");
-                location.reload();
-            } else {
-                alert(result.detail || "Failed to delete item");
-            }
-        } catch (err) {
-            console.error("Delete error:", err);
-            alert("Error deleting item.");
-        }
-    }
-
-    // Debounce function
+    // Debounce utility
     function debounce(func, delay) {
         let timeout;
         return function (...args) {
@@ -186,10 +163,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// Open modal with prefilled status
+// Modal open function
 function openUploadForm(type) {
     document.getElementById("status").value = type.toLowerCase();
-    document.getElementById("uploadModalLabel").innerText = `Add ${type} Item`;
-    const uploadModal = new bootstrap.Modal(document.getElementById("uploadModal"));
-    uploadModal.show();
+    document.getElementById("uploadModalLabel").innerText = `📤 Add ${type} Item`;
+    document.getElementById("uploadModalOverlay").classList.remove("hidden");
 }

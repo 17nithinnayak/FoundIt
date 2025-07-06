@@ -20,7 +20,7 @@ async def register(user: UserCreate):
         "name": user.name,
         "email": user.email,
         "password": hash_password(user.password),  # 🔥 this line is critical
-        "role": "admin"
+        "role": user.role
     }
 
     await db["users"].insert_one(user_data)
@@ -37,7 +37,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if not verify_password(form_data.password, user["password"]):
         raise HTTPException(status_code=400, detail="Incorrect password")
 
-    access_token = create_access_token(data={"sub": str(user["_id"]), "role": "admin"})
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(data={"sub": str(user["_id"])})
+    return {"access_token": access_token, "token_type": "bearer", "role": user["role"]
+}
 
     
