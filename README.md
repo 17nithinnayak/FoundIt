@@ -52,14 +52,12 @@ Every campus faces a daily problem: students misplacing their belongings and oth
 
 > These steps also work on another laptop for deployment.
 
- 1. ✅ Clone the repository
-
+ 1. Clone the repository
 ```bash
 git clone https://github.com/17nithinnayak/foundit.git
 cd foundit
 ```
 2. Set up virutal environment
-
 ```bash
 python -m venv venv
 venv\Scripts\activate
@@ -68,11 +66,11 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
-4.Replace MongoDB URL
-
+4. Replace MongoDB URL
+```
 client = AsyncIOMotorClient("YOUR_MONGODB_URI")
 db = client["foundit"]
-
+```
 5. Start server
 ```bash
 uvicorn backend.main:app --reload
