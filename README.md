@@ -58,14 +58,16 @@ Every campus faces a daily problem: students misplacing their belongings and oth
 git clone https://github.com/17nithinnayak/foundit.git
 cd foundit
 
+
+#set up venv
+python -m venv venv
+venv\Scripts\activate
+
 pip install -r requirements.txt
 #replace this
 client = AsyncIOMotorClient("YOUR_MONGODB_URI")
 db = client["foundit"]
 
-#set up venv
-python -m venv venv
-venv\Scripts\activate
 
 #start server
 uvicorn backend.main:app --reload
