@@ -114,13 +114,23 @@ async function loadClaims() {
 
       div.innerHTML = `
         <p><strong>User:</strong> ${claim.user.name} (${claim.user.email})</p>
-        <p><strong>Item:</strong> ${claim.item.name}</p>
-        <img src="http://127.0.0.1:8000/${claim.item.image_url?.replace(/\\/g, "/")}" class="w-40 mt-2 mb-2 rounded" onerror="this.style.display='none'" />
+        <p><strong>Item:</strong> ${claim.item.title}</p>
+        <img src="http://127.0.0.1:8000/${claim.item.image_path?.replace(/\\/g, "/")}" class="w-40 mt-2 mb-2 rounded" onerror="this.style.display='none'" />
+
         <p><strong>Status:</strong> ${claim.status}</p>
         <div class="mt-3 space-x-3">
-          <button onclick="approveClaim('${claim.claim_id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded">Approve</button>
-          <button onclick="rejectClaim('${claim.claim_id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded">Reject</button>
-        </div>
+  ${
+    claim.status === "pending"
+      ? `
+        <button onclick="approveClaim('${claim.claim_id}')" class="bg-green-500 hover:bg-green-600 text-white px-4 py-1 rounded">Approve</button>
+        <button onclick="rejectClaim('${claim.claim_id}')" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded">Reject</button>
+      `
+      : `<span class="font-semibold ${claim.status === 'approved' ? 'text-green-600' : 'text-red-600'}">
+          ${claim.status === 'approved' ? '✅ Approved' : '❌ Rejected'}
+        </span>`
+  }
+</div>
+
       `;
 
       content.appendChild(div);
@@ -142,14 +152,14 @@ async function approveClaim(claimId) {
     const data = await res.json();
 
     if (res.ok) {
-      alert("✅ Claim approved.");
+     
       loadClaims();
     } else {
-      alert("❌ " + (data.detail || "Approval failed"));
+      
     }
   } catch (err) {
     console.error("Approve error:", err);
-    alert("Error approving claim.");
+    
   }
 }
 
@@ -164,13 +174,13 @@ async function rejectClaim(claimId) {
     const data = await res.json();
 
     if (res.ok) {
-      alert("🚫 Claim rejected.");
+      
       loadClaims();
     } else {
-      alert("❌ " + (data.detail || "Rejection failed"));
+      
     }
   } catch (err) {
     console.error("Reject error:", err);
-    alert("Error rejecting claim.");
+    
   }
 }

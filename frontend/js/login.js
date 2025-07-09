@@ -12,24 +12,19 @@ loginForm.addEventListener("submit", async (e) => {
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams({
-                username,
-                password,
-            }),
+            body: new URLSearchParams({ username, password }),
         });
 
-        if (!response.ok) {
-            throw new Error("Login failed");
-        }
+        if (!response.ok) throw new Error("Login failed");
 
         const data = await response.json();
         const token = data.access_token;
         localStorage.setItem("token", token);
 
+        // Decode JWT to get user info
         const payload = JSON.parse(atob(token.split(".")[1]));
-        console.log(payload);
         localStorage.setItem("role", payload.role);
-
+        localStorage.setItem("user_id", payload.id);  // ✅ store user id
 
         if (payload.role === "admin") {
             window.location.href = "admin_dashboard.html";

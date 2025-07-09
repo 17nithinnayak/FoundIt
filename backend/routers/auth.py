@@ -19,7 +19,8 @@ async def register(user: UserCreate):
     user_data = {
         "name": user.name,
         "email": user.email,
-        "password": hash_password(user.password),  # 🔥 this line is critical
+        "phone": user.phone,
+        "password": hash_password(user.password), 
         "role": user.role
     }
 

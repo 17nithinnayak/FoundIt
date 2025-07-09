@@ -9,6 +9,9 @@ class User(BaseModel):
     name: str
     email: EmailStr
     phone: str
+    password: str
+    role: str 
+
 
 @router.post("/")
 async def create_user(user: User):
@@ -22,3 +25,4 @@ async def create_user(user: User):
 
     users_collection.insert_one(user.dict())
     return {"message": f"User {user.name} added", "user": user}
+

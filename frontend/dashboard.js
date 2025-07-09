@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const container = document.getElementById("items-container");
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
+    const userId = localStorage.getItem("user_id");
 
     if (!token) {
         alert("Please login first.");
@@ -9,17 +10,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Initial load
     loadItems();
 
-    // Filter by status
     const statusFilter = document.getElementById("statusFilter");
     statusFilter?.addEventListener("change", () => {
         const keyword = document.getElementById("searchBar")?.value || "";
         loadItems(statusFilter.value, keyword);
     });
 
-    // Search with debounce
     const searchBar = document.getElementById("searchBar");
     searchBar?.addEventListener("input", debounce((e) => {
         const keyword = e.target.value;
@@ -27,7 +25,6 @@ document.addEventListener("DOMContentLoaded", () => {
         loadItems(status, keyword);
     }, 300));
 
-    // Upload form submission
     document.getElementById("uploadForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const form = e.target;
@@ -56,31 +53,36 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Load items
-    async function loadItems(status = "", keyword = "") {
+async function loadItems(status = "", keyword = "") {
         container.innerHTML = "<p class='text-center'>Loading items...</p>";
+
         try {
-            let url = "http://127.0.0.1:8000/items/items";
+            let itemsUrl = "http://127.0.0.1:8000/items/items";
             const params = new URLSearchParams();
             if (status) params.append("status", status);
             if (keyword) params.append("keyword", keyword);
-            if (params.toString()) url += `?${params.toString()}`;
+            if (params.toString()) itemsUrl += `?${params.toString()}`;
 
-            const response = await fetch(url, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const [itemsRes, claimsRes] = await Promise.all([
+                fetch(itemsUrl, { headers: { Authorization: `Bearer ${token}` } }),
+                fetch("http://127.0.0.1:8000/items/user/claims", {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ]);
 
-            const data = await response.json();
+            const itemsData = await itemsRes.json();
+            const claimsData = await claimsRes.json();
+
+            const claims = claimsData.claims;
+
             container.innerHTML = "";
 
-            if (!data.results || data.results.length === 0) {
+            if (!itemsData.results || itemsData.results.length === 0) {
                 container.innerHTML = "<p class='text-center'>No items found.</p>";
                 return;
             }
 
-            data.results.forEach(item => {
+            itemsData.results.forEach(item => {
                 const card = document.createElement("div");
                 card.className = "card m-2";
                 card.style.width = "18rem";
@@ -101,16 +103,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     <p><strong>Claimed:</strong> ${item.is_claimed ? "Yes" : "No"}</p>
                 `;
 
-                // Claim Button for non-admins
+                const claim = claims.find(c => c.item_id === item.id);
                 if (!item.is_claimed && role !== "admin") {
-                    const claimBtn = document.createElement("button");
-                    claimBtn.textContent = "Claim";
-                    claimBtn.className = "btn btn-primary";
-                    claimBtn.onclick = () => claimItem(item.id);
-                    body.appendChild(claimBtn);
+                    let claimStatusButton = "";
+
+                    if (claim) {
+                        if (claim.status === "pending") {
+                            claimStatusButton = `<button disabled class="mt-2 bg-yellow-400 text-white font-semibold py-1.5 px-4 rounded shadow">Requested</button>`;
+                        } else if (claim.status === "approved") {
+                            claimStatusButton = `<span class="mt-2 inline-block text-green-600 font-semibold">✅ Approved</span>`;
+                        } else if (claim.status === "rejected") {
+                            claimStatusButton = `<span class="mt-2 inline-block text-red-500 font-semibold">❌ Rejected</span>`;
+                        }
+                    } else {
+                        claimStatusButton = `<button onclick="claimItem('${item.id}')" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1.5 px-4 rounded shadow">Claim</button>`;
+                    }
+
+                    const claimWrap = document.createElement("div");
+                    claimWrap.innerHTML = claimStatusButton;
+                    body.appendChild(claimWrap);
                 }
 
-                // Delete Button for admin only
                 if (role === "admin") {
                     const deleteBtn = document.createElement("button");
                     deleteBtn.textContent = "Delete";
@@ -128,14 +141,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Claim item
     async function claimItem(itemId) {
+        const token = localStorage.getItem("token");
         try {
             const res = await fetch(`http://127.0.0.1:8000/items/claim/${itemId}`, {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
+                headers: { Authorization: `Bearer ${token}` }
             });
 
             const result = await res.json();
@@ -151,9 +162,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
- 
-
-    // Debounce utility
     function debounce(func, delay) {
         let timeout;
         return function (...args) {
@@ -163,7 +171,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// Modal open function
+window.claimItem = async function (itemId) {
+  const token = localStorage.getItem("token");
+
+  try {
+    const res = await fetch(`http://127.0.0.1:8000/items/claim/${itemId}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert("✅ Claim request submitted.");
+      location.reload();  // Or re-run loadItems()
+    } else {
+      alert(result.detail || "❌ Failed to claim item.");
+    }
+  } catch (err) {
+    console.error("Claim error:", err);
+    alert("Error while claiming item.");
+  }
+};
+
 function openUploadForm(type) {
     document.getElementById("status").value = type.toLowerCase();
     document.getElementById("uploadModalLabel").innerText = `📤 Add ${type} Item`;

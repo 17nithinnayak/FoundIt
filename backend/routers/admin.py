@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, Security
+from fastapi import APIRouter, HTTPException, Depends, Query
 from bson.objectid import ObjectId
 from backend.auth.auth_handler import get_current_user
 from backend.database import claim_collection, user_collection, item_collection
 
 router = APIRouter()
+
 
 def admin_only(current_user=Depends(get_current_user)):
     role = current_user.get("role")
@@ -14,15 +15,25 @@ def admin_only(current_user=Depends(get_current_user)):
 
 @router.get("/claims", dependencies=[Depends(admin_only)])
 async def get_all_claims(current_user: dict = Depends(get_current_user)):
-    if current_user["role"] != "admin":
-        raise HTTPException(status_code=403, detail="Access denied")
     
-    claim = []
-    async for claim in claim_collection.find():
-        user = await user_collection.find_one({"_id": ObjectId(claim["user_id"])})
-        item = await item_collection.find_one({"_id": ObjectId(claim["item_id"])})
 
-        claim.append({
+    claim_list = []
+    async for claim in claim_collection.find():
+        
+        user = await user_collection.find_one({"_id": ObjectId(claim["user_id"])})
+        item_id = claim["item_id"]
+        if ObjectId.is_valid(item_id):
+             item = await item_collection.find_one({"_id": ObjectId(item_id)})
+        else:
+              item = None
+        
+        if not user or not item:
+                    continue  # Skip broken claims
+
+      
+        
+
+        claim_list.append({
             "claim_id": str(claim["_id"]),
             "status": claim.get("status", "Pending"),
             "timestamp": claim.get("timestamp"),
@@ -33,12 +44,17 @@ async def get_all_claims(current_user: dict = Depends(get_current_user)):
             },
             "item": {
                 "id": claim["item_id"],
-                "name": item["name"],
-                "image_url": item.get("image_url")
+                "title": item.get("title", "Unknown"),
+                "image_path": item.get("image_path", ""),
+                "location" : item.get("location", ""),
+                "description": item.get("description", "")
             }
         })
 
-    return {"claims": claim}
+  
+    return {"claims": claim_list}
+
+
 
 @router.put("/claims/{claim_id}", dependencies=[Depends(admin_only)])
 async def update_claim_status(
@@ -48,17 +64,18 @@ async def update_claim_status(
 ):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     claim = await claim_collection.find_one({"_id": ObjectId(claim_id)})
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
-    
+
     await claim_collection.update_one(
         {"_id": ObjectId(claim_id)},
         {"$set": {"status": status}}
     )
-    
+
     return {"msg": f"Claim {status} successfully"}
+
 
 @router.get("/items", dependencies=[Depends(admin_only)])
 async def view_all_items(current_user=Depends(get_current_user)):
@@ -71,7 +88,7 @@ async def view_all_items(current_user=Depends(get_current_user)):
 
         # Fetch claim if exists
         claim = await claim_collection.find_one({"item_id": item_id_str})
-        
+
         item["id"] = item_id_str
         item["claimed"] = bool(claim)
         item["claim_status"] = claim.get("status") if claim else None
@@ -80,4 +97,3 @@ async def view_all_items(current_user=Depends(get_current_user)):
         items.append(item)
 
     return {"results": items}
-
